@@ -1,5 +1,11 @@
 import React from "react";
-import { useTable, useSortBy } from "react-table";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  ColumnDef,
+  flexRender,
+} from "@tanstack/react-table";
 import { mockTableData } from "../data/mockData";
 import Card from "./Card";
 import moment from "moment";
@@ -9,14 +15,23 @@ import {
   ArrowUpNarrowWide,
 } from "lucide-react";
 
+interface SongData {
+  songName: string;
+  artist: string;
+  dateStreamed: string;
+  streamCount: number;
+  userId: string;
+  cover: string;
+}
+
 const DataTable = () => {
   const data = React.useMemo(() => mockTableData, []);
-  const columns = React.useMemo(
+  const columns: ColumnDef<SongData>[] = React.useMemo(
     () => [
       {
-        Header: "Song",
-        accessor: "songName",
-        Cell: ({ row }) => (
+        header: "Song",
+        accessorKey: "songName",
+        cell: ({ row }) => (
           <div className="flex items-center gap-3">
             <img
               src={row.original.cover}
@@ -27,44 +42,55 @@ const DataTable = () => {
           </div>
         ),
       },
-      { Header: "Artist", accessor: "artist" },
+      { header: "Artist", accessorKey: "artist" },
       {
-        Header: "Date Streamed",
-        accessor: "dateStreamed",
-        Cell: ({ row }) => (
+        header: "Date Streamed",
+        accessorKey: "dateStreamed",
+        cell: ({ row }) => (
           <p>{moment(row.original.dateStreamed).format("MMM DD, YYYY")}</p>
         ),
       },
-      { Header: "Stream Count", accessor: "streamCount" },
-      { Header: "User ID", accessor: "userId" },
+      { header: "Stream Count", accessorKey: "streamCount" },
+      { header: "User ID", accessorKey: "userId" },
     ],
     []
   );
 
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    useTable({ columns, data }, useSortBy);
+  const { getHeaderGroups, getRowModel } = useReactTable({
+    columns,
+    data,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    enableSorting: true,
+  });
 
   return (
     <Card>
       <h3 className="text-xl font-semibold mt-2 mb-6">Recent Streams</h3>
-      <table {...getTableProps()} className="w-full">
+      <table className="w-full">
         <thead className="border-b border-foreground/15">
-          {headerGroups.map((headerGroup) => (
-            <tr {...headerGroup.getHeaderGroupProps()}>
-              {headerGroup.headers.map((column) => (
+          {getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
                 <th
-                  {...column.getHeaderProps(column.getSortByToggleProps())}
+                  key={header.id}
                   className="py-3 px-2 text-left text-xs uppercase font-medium opacity-60 tracking-wider"
                 >
-                  <div className="flex items-center gap-2">
-                    <p> {column.render("Header")}</p>
+                  <div
+                    onClick={header.column.getToggleSortingHandler()}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <p>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </p>
                     <div className="w-4 flex justify-center">
-                      {column.isSorted ? (
-                        column.isSortedDesc ? (
-                          <ArrowDownWideNarrow />
-                        ) : (
-                          <ArrowUpNarrowWide />
-                        )
+                      {header.column.getIsSorted() === "asc" ? (
+                        <ArrowUpNarrowWide />
+                      ) : header.column.getIsSorted() === "desc" ? (
+                        <ArrowDownWideNarrow />
                       ) : (
                         <ArrowUpDown />
                       )}
@@ -75,20 +101,19 @@ const DataTable = () => {
             </tr>
           ))}
         </thead>
-        <tbody {...getTableBodyProps()}>
-          {rows.map((row) => {
-            prepareRow(row);
+        <tbody>
+          {getRowModel().rows.map((row) => {
             return (
               <tr
-                {...row.getRowProps()}
+                key={row.id}
                 className="border-b last:border-0 border-foreground/15"
               >
-                {row.cells.map((cell) => (
+                {row.getVisibleCells().map((cell) => (
                   <td
-                    {...cell.getCellProps()}
+                    key={cell.id}
                     className="py-3 px-2 font-medium whitespace-nowrap"
                   >
-                    {cell.render("Cell")}
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
               </tr>
